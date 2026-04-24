@@ -11,6 +11,7 @@ import (
 	externalKeyProvider "github.com/opentofu/opentofu/internal/encryption/keyprovider/external"
 	"github.com/opentofu/opentofu/internal/encryption/keyprovider/gcp_kms"
 	"github.com/opentofu/opentofu/internal/encryption/keyprovider/openbao"
+	"github.com/opentofu/opentofu/internal/encryption/keyprovider/ovhcloud_kms"
 	"github.com/opentofu/opentofu/internal/encryption/keyprovider/pbkdf2"
 	"github.com/opentofu/opentofu/internal/encryption/method/aesgcm"
 	externalMethod "github.com/opentofu/opentofu/internal/encryption/method/external"
@@ -34,6 +35,9 @@ func init() {
 		panic(err)
 	}
 	if err := DefaultRegistry.RegisterKeyProvider(openbao.New()); err != nil {
+		panic(err)
+	}
+	if err := DefaultRegistry.RegisterKeyProvider(ovhcloud_kms.New()); err != nil {
 		panic(err)
 	}
 	if err := DefaultRegistry.RegisterKeyProvider(externalKeyProvider.New()); err != nil {
