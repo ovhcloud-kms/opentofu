@@ -12,15 +12,22 @@ import (
 	"github.com/ovh/okms-sdk-go"
 )
 
+// Required for mocking in tests
 var newOkmsClient = func(endpoint string, cfg okms.ClientConfig) (okmsClient, error) {
 	return okms.NewRestAPIClient(endpoint, cfg)
 }
 
 // Required for mocking in tests
-var tlsLoadX509KeyPair = tls.LoadX509KeyPair
+var loadMTLSConfig = func(cert, key string) ([]tls.Certificate, string, error) {
+	//TODO implement me
+	return nil, "", nil
+}
 
 type Config struct {
-	OkmsID   string
+	// OkmsID is filled automatically from the mTLS client certificate.
+	// It is not an HCL field, the user can not set it.
+	OkmsID string
+
 	Endpoint string `hcl:"endpoint,optional"`
 	KeyID    string `hcl:"key_id,optional"`
 	CA       string `hcl:"ca,optional"`

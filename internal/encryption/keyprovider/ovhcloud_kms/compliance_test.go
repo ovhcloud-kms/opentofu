@@ -18,6 +18,7 @@ const (
 	testKeyID    = "00000000-0000-0000-0000-000000000000"
 	testCert     = "cert.pem"
 	testKey      = "key.pem"
+	testOkmsID   = "00000000-0000-0000-0000-000000000001"
 )
 
 // getTestConfig returns a Config filled with environment variables when either TF_ACC or TF_OKMS_TEST is set,

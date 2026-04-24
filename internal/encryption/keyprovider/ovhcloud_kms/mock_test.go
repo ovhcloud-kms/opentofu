@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 
@@ -31,13 +30,11 @@ func (m *mockOkmsClient) DecryptDataKey(_ context.Context, okmsID, keyID uuid.UU
 }
 
 func injectMock(m *mockOkmsClient) {
-	tlsLoadX509KeyPair = func(_, _ string) (tls.Certificate, error) {
-		return tls.Certificate{
-			Leaf: &x509.Certificate{},
-		}, nil
-	}
 	newOkmsClient = func(_ string, _ okms.ClientConfig) (okmsClient, error) {
 		return m, nil
+	}
+	loadMTLSConfig = func(_, _ string) ([]tls.Certificate, string, error) {
+		return []tls.Certificate{}, testOkmsID, nil
 	}
 }
 
