@@ -299,6 +299,14 @@ func TestKeyProvider(t *testing.T) {
 					IsPresent:   false,
 					IsValid:     false,
 				},
+				"invalid": {
+					ValidConfig: cfg,
+					Meta: &keyMeta{
+						EncryptedKey: "not-valid",
+					},
+					IsPresent: true,
+					IsValid:   false,
+				},
 			},
 
 			ProvideTestCase: compliancetest.ProvideTestCase[*Config, *keyMeta]{
