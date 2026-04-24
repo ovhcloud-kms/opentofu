@@ -16,13 +16,9 @@ func New() keyprovider.Descriptor {
 type descriptor struct{}
 
 func (d descriptor) ID() keyprovider.ID {
-	//TODO implement me
-	//panic("implement me")
-	return ""
+	return "ovhcloud_kms"
 }
 
 func (d descriptor) ConfigStruct() keyprovider.Config {
-	//TODO implement me
-	//panic("implement me")
-	return nil
+	return &Config{}
 }
