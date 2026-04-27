@@ -7,9 +7,19 @@ package ovhcloud_kms
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/asn1"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
 
 	"github.com/opentofu/opentofu/internal/encryption/keyprovider"
 	"github.com/ovh/okms-sdk-go"
+)
+
+const (
+	defaultKeyBits = 256
 )
 
 // Required for mocking in tests
@@ -18,9 +28,17 @@ var newOkmsClient = func(endpoint string, cfg okms.ClientConfig) (okmsClient, er
 }
 
 // Required for mocking in tests
-var loadMTLSConfig = func(cert, key string) ([]tls.Certificate, string, error) {
-	//TODO implement me
-	return nil, "", nil
+var loadMTLSConfig = func(certPath, keyPath string) ([]tls.Certificate, string, error) {
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("could not load certificate: %w", err)
+	}
+
+	okmsID, err := getOkmsIDFromCert(cert.Leaf)
+	if err != nil {
+		return nil, "", err
+	}
+	return []tls.Certificate{cert}, okmsID, nil
 }
 
 type Config struct {
@@ -40,4 +58,56 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 	//TODO implement me
 	//panic("implement me")
 	return nil, nil, nil
+}
+
+func stringEnvFallback(val string, env string) string {
+	if val != "" {
+		return val
+	}
+	return os.Getenv(env)
+}
+
+func getOkmsIDFromCert(cert *x509.Certificate) (string, error) {
+	for _, ext := range cert.Extensions { //
+		// See https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
+		if !ext.Id.Equal(asn1.ObjectIdentifier{2, 5, 29, 17}) {
+			continue
+		}
+		var seq asn1.RawValue
+		_, err := asn1.Unmarshal(ext.Value, &seq)
+		if err != nil {
+			return "", err
+		}
+		for rest := seq.Bytes; len(rest) > 0; {
+			var val asn1.RawValue
+			rest, err = asn1.Unmarshal(rest, &val)
+			if err != nil {
+				return "", err
+			}
+			if val.Tag != 0 {
+				continue
+			}
+
+			var oid asn1.ObjectIdentifier
+			rem, err := asn1.Unmarshal(val.Bytes, &oid)
+			if err != nil {
+				return "", err
+			}
+			if !oid.Equal(asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 20, 2, 3}) {
+				continue
+			}
+			if _, err = asn1.Unmarshal(rem, &val); err != nil {
+				return "", err
+			}
+			var othername string
+			if _, err := asn1.Unmarshal(val.Bytes, &othername); err != nil {
+				return "", err
+			}
+			prefix := "okms.domain:"
+			if strings.HasPrefix(othername, prefix) {
+				return othername[len(prefix):], nil
+			}
+		}
+	}
+	return "", errors.New("no okms domain id found")
 }
