@@ -171,6 +171,7 @@ func TestKeyProvider(t *testing.T) {
 		}
 	}
 }`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+					ValidJSON:  true,
 					ValidBuild: true,
 				},
 				"empty": {
@@ -238,7 +239,7 @@ func TestKeyProvider(t *testing.T) {
 				"key_id": "%s",
 				"cert": "%s",
 				"key": "%s",
-				"key_bits: 2"
+				"key_bits": 2
 			}
 		}
 	}
@@ -255,7 +256,7 @@ func TestKeyProvider(t *testing.T) {
 				"key_id": "%s",
 				"cert": "%s",
 				"key": "%s",
-				"key_bits: 256"
+				"key_bits": 256
 			}
 		}
 	}
@@ -272,7 +273,7 @@ func TestKeyProvider(t *testing.T) {
 				"key_id": "%s",
 				"cert": "%s",
 				"key": "%s",
-				"unknown: 0"
+				"unknown": 0
 			}
 		}
 	}
