@@ -32,5 +32,5 @@ type keyProvider struct {
 func (k keyProvider) Provide(decryptionMeta keyprovider.KeyMeta) (keysOutput keyprovider.Output, encryptionMeta keyprovider.KeyMeta, err error) {
 	//TODO implement me
 	//panic("implement me")
-	return keyprovider.Output{}, nil, nil
+	return keyprovider.Output{}, &keyMeta{}, nil
 }

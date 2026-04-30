@@ -6,14 +6,17 @@
 package ovhcloud_kms
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/opentofu/opentofu/internal/encryption/keyprovider"
 	"github.com/ovh/okms-sdk-go"
 )
@@ -42,10 +45,6 @@ var loadMTLSConfig = func(certPath, keyPath string) ([]tls.Certificate, string, 
 }
 
 type Config struct {
-	// OkmsID is filled automatically from the mTLS client certificate.
-	// It is not an HCL field, the user can not set it.
-	OkmsID string
-
 	Endpoint string `hcl:"endpoint,optional"`
 	KeyID    string `hcl:"key_id,optional"`
 	CA       string `hcl:"ca,optional"`
@@ -55,9 +54,103 @@ type Config struct {
 }
 
 func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
-	//TODO implement me
-	//panic("implement me")
-	return nil, nil, nil
+	c.Endpoint = stringEnvFallback(c.Endpoint, "TF_OKMS_ENDPOINT")
+	c.KeyID = stringEnvFallback(c.KeyID, "TF_OKMS_KEY_ID")
+	c.CA = stringEnvFallback(c.CA, "TF_OKMS_CA")
+	c.Cert = stringEnvFallback(c.Cert, "TF_OKMS_CERT")
+	c.Key = stringEnvFallback(c.Key, "TF_OKMS_KEY")
+	c.KeyBits = int32EnvFallback(c.KeyBits, "TF_OKMS_KEY_BITS")
+	if c.KeyBits == 0 {
+		c.KeyBits = defaultKeyBits
+	}
+
+	if err := c.validate(); err != nil {
+		return nil, nil, err
+	}
+
+	keyID, err := uuid.Parse(c.KeyID)
+	if err != nil {
+		return nil, nil, &keyprovider.ErrInvalidConfiguration{
+			Message: fmt.Sprintf("key_id must be a valid UUID: %s", c.KeyID),
+			Cause:   err,
+		}
+	}
+
+	tlsConfig, okmsID, err := c.buildTLSConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	client, err := newOkmsClient(c.Endpoint, okms.ClientConfig{TlsCfg: tlsConfig})
+	if err != nil {
+		return nil, nil, &keyprovider.ErrInvalidConfiguration{
+			Message: "failed to create OVHcloud KMS client",
+			Cause:   err,
+		}
+	}
+
+	return &keyProvider{
+		svc:     client,
+		ctx:     context.Background(),
+		okmsID:  okmsID,
+		keyID:   keyID,
+		keyBits: c.KeyBits,
+	}, new(keyMeta), nil
+}
+
+func (c Config) validate() error {
+	if c.Endpoint == "" {
+		return &keyprovider.ErrInvalidConfiguration{Message: "endpoint is required"}
+	}
+
+	if c.KeyBits != 128 && c.KeyBits != 192 && c.KeyBits != 256 {
+		return &keyprovider.ErrInvalidConfiguration{
+			Message: fmt.Sprintf("key_bits must be 128, 192 or 256, got %d", c.KeyBits),
+		}
+	}
+
+	if c.Cert == "" {
+		return &keyprovider.ErrInvalidConfiguration{Message: "cert is required"}
+	}
+	if c.Key == "" {
+		return &keyprovider.ErrInvalidConfiguration{Message: "key is required"}
+	}
+
+	return nil
+}
+
+func (c Config) buildTLSConfig() (*tls.Config, uuid.UUID, error) {
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	if c.CA != "" {
+		if err := loadCertPool(tlsConfig, c.CA); err != nil {
+			return nil, uuid.UUID{}, &keyprovider.ErrInvalidConfiguration{
+				Message: "failed to load ca",
+				Cause:   err,
+			}
+		}
+	}
+
+	certs, okmsIDStr, err := loadMTLSConfig(c.Cert, c.Key)
+	if err != nil {
+		return nil, uuid.UUID{}, &keyprovider.ErrInvalidConfiguration{
+			Message: "failed to load MTLS configuration",
+			Cause:   err,
+		}
+	}
+	tlsConfig.Certificates = certs
+
+	okmsID, err := uuid.Parse(okmsIDStr)
+	if err != nil {
+		return nil, uuid.UUID{}, &keyprovider.ErrInvalidConfiguration{
+			Message: fmt.Sprintf("okms_id must be a valid UUID: %s", okmsIDStr),
+			Cause:   err,
+		}
+	}
+
+	return tlsConfig, okmsID, nil
 }
 
 func stringEnvFallback(val string, env string) string {
@@ -67,8 +160,48 @@ func stringEnvFallback(val string, env string) string {
 	return os.Getenv(env)
 }
 
+func int32EnvFallback(val int32, env string) int32 {
+	if val != 0 {
+		return val
+	}
+
+	if s := os.Getenv(env); s != "" {
+		if n, err := strconv.ParseInt(s, 10, 32); err == nil {
+			return int32(n)
+		}
+	}
+	return val
+}
+
+func loadCertPool(tlsConfig *tls.Config, CA string) error {
+	pool, err := getCertPool(CA)
+	if err != nil {
+		return fmt.Errorf("failed to get ca: %w", err)
+	}
+	tlsConfig.RootCAs = pool
+	return nil
+}
+
+func getCertPool(caFile string) (*x509.CertPool, error) {
+	pool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("could not load system certificates pool: %w", err)
+	}
+
+	if caFile != "" {
+		caBundle, err := os.ReadFile(caFile)
+		if err != nil {
+			return nil, fmt.Errorf("could not load CA file %q: %w", caFile, err)
+		}
+		if !pool.AppendCertsFromPEM(caBundle) {
+			return nil, fmt.Errorf("invalid CA certificate: %q", caFile)
+		}
+	}
+	return pool, nil
+}
+
 func getOkmsIDFromCert(cert *x509.Certificate) (string, error) {
-	for _, ext := range cert.Extensions { //
+	for _, ext := range cert.Extensions {
 		// See https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
 		if !ext.Id.Equal(asn1.ObjectIdentifier{2, 5, 29, 17}) {
 			continue
