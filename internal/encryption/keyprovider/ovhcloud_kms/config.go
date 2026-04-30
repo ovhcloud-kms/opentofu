@@ -81,7 +81,12 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 		return nil, nil, err
 	}
 
-	client, err := newOkmsClient(c.Endpoint, okms.ClientConfig{TlsCfg: tlsConfig})
+	client, err := newOkmsClient(
+		c.Endpoint,
+		okms.ClientConfig{
+			TlsCfg: tlsConfig,
+		},
+	)
 	if err != nil {
 		return nil, nil, &keyprovider.ErrInvalidConfiguration{
 			Message: "failed to create OVHcloud KMS client",
@@ -100,7 +105,9 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 
 func (c Config) validate() error {
 	if c.Endpoint == "" {
-		return &keyprovider.ErrInvalidConfiguration{Message: "endpoint is required"}
+		return &keyprovider.ErrInvalidConfiguration{
+			Message: "endpoint is required",
+		}
 	}
 
 	if c.KeyBits != 128 && c.KeyBits != 192 && c.KeyBits != 256 {
@@ -110,10 +117,14 @@ func (c Config) validate() error {
 	}
 
 	if c.Cert == "" {
-		return &keyprovider.ErrInvalidConfiguration{Message: "cert is required"}
+		return &keyprovider.ErrInvalidConfiguration{
+			Message: "cert is required",
+		}
 	}
 	if c.Key == "" {
-		return &keyprovider.ErrInvalidConfiguration{Message: "key is required"}
+		return &keyprovider.ErrInvalidConfiguration{
+			Message: "key is required",
+		}
 	}
 
 	return nil
@@ -126,7 +137,7 @@ func (c Config) buildTLSConfig() (*tls.Config, uuid.UUID, error) {
 
 	if c.CA != "" {
 		if err := loadCertPool(tlsConfig, c.CA); err != nil {
-			return nil, uuid.UUID{}, &keyprovider.ErrInvalidConfiguration{
+			return nil, uuid.Nil, &keyprovider.ErrInvalidConfiguration{
 				Message: "failed to load ca",
 				Cause:   err,
 			}
@@ -135,7 +146,7 @@ func (c Config) buildTLSConfig() (*tls.Config, uuid.UUID, error) {
 
 	certs, okmsIDStr, err := loadMTLSConfig(c.Cert, c.Key)
 	if err != nil {
-		return nil, uuid.UUID{}, &keyprovider.ErrInvalidConfiguration{
+		return nil, uuid.Nil, &keyprovider.ErrInvalidConfiguration{
 			Message: "failed to load MTLS configuration",
 			Cause:   err,
 		}
@@ -144,7 +155,7 @@ func (c Config) buildTLSConfig() (*tls.Config, uuid.UUID, error) {
 
 	okmsID, err := uuid.Parse(okmsIDStr)
 	if err != nil {
-		return nil, uuid.UUID{}, &keyprovider.ErrInvalidConfiguration{
+		return nil, uuid.Nil, &keyprovider.ErrInvalidConfiguration{
 			Message: fmt.Sprintf("okms_id must be a valid UUID: %s", okmsIDStr),
 			Cause:   err,
 		}
