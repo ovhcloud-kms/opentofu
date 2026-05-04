@@ -50,6 +50,7 @@ type Config struct {
 	CA       string `hcl:"ca,optional"`
 	Cert     string `hcl:"cert,optional"`
 	Key      string `hcl:"key,optional"`
+	KeyName  string `hcl:"key_name,optional"`
 	KeyBits  int32  `hcl:"key_bits,optional"`
 }
 
@@ -59,6 +60,7 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 	c.CA = stringEnvFallback(c.CA, "TF_OKMS_CA")
 	c.Cert = stringEnvFallback(c.Cert, "TF_OKMS_CERT")
 	c.Key = stringEnvFallback(c.Key, "TF_OKMS_KEY")
+	c.KeyName = stringEnvFallback(c.KeyName, "TF_OKMS_KEY_NAME")
 	c.KeyBits = int32EnvFallback(c.KeyBits, "TF_OKMS_KEY_BITS")
 	if c.KeyBits == 0 {
 		c.KeyBits = defaultKeyBits
@@ -99,6 +101,7 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 		ctx:     context.Background(),
 		okmsID:  okmsID,
 		keyID:   keyID,
+		keyName: c.KeyName,
 		keyBits: c.KeyBits,
 	}, new(keyMeta), nil
 }
@@ -107,6 +110,12 @@ func (c Config) validate() error {
 	if c.Endpoint == "" {
 		return &keyprovider.ErrInvalidConfiguration{
 			Message: "endpoint is required",
+		}
+	}
+
+	if c.KeyName == "" {
+		return &keyprovider.ErrInvalidConfiguration{
+			Message: "key_name is required",
 		}
 	}
 

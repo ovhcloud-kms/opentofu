@@ -18,6 +18,7 @@ const (
 	testKeyID    = "00000000-0000-0000-0000-000000000000"
 	testCert     = "cert.pem"
 	testKey      = "key.pem"
+	testKeyName  = "okms-test"
 	testOkmsID   = "00000000-0000-0000-0000-000000000001"
 )
 
@@ -45,7 +46,8 @@ func getTestConfig(t *testing.T) *Config {
 	keyID := os.Getenv("TF_OKMS_KEY_ID")
 	cert := os.Getenv("TF_OKMS_CERT")
 	key := os.Getenv("TF_OKMS_KEY")
-	if endpoint == "" || keyID == "" || cert == "" || key == "" {
+	keyName := os.Getenv("TF_OKMS_KEY_NAME")
+	if endpoint == "" || keyID == "" || cert == "" || key == "" || keyName == "" {
 		return nil
 	}
 
@@ -54,6 +56,7 @@ func getTestConfig(t *testing.T) *Config {
 		KeyID:    keyID,
 		Cert:     cert,
 		Key:      key,
+		KeyName:  keyName,
 	}
 }
 
@@ -65,6 +68,7 @@ func TestKeyProvider(t *testing.T) {
 			KeyID:    testKeyID,
 			Cert:     testCert,
 			Key:      testKey,
+			KeyName:  testKeyName,
 		}
 		injectMock(defaultMock())
 	}
@@ -80,7 +84,8 @@ func TestKeyProvider(t *testing.T) {
 							key_id = "%s"
 							cert = "%s"
 							key = "%s"
-						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+							key_name = "%s"
+						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidHCL:   true,
 					ValidBuild: true,
 					Validate: func(config *Config, keyProvider *keyProvider) error {
@@ -100,7 +105,8 @@ func TestKeyProvider(t *testing.T) {
 							endpoint = "%s"
 							cert = "%s"
 							key = "%s"
-						}`, cfg.Endpoint, cfg.Cert, cfg.Key),
+							key_name = "%s"
+						}`, cfg.Endpoint, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidHCL:   true,
 					ValidBuild: false,
 				},
@@ -109,7 +115,8 @@ func TestKeyProvider(t *testing.T) {
 							endpoint = "%s"
 							key_id = "%s"
 							key = "%s"
-						}`, cfg.Endpoint, cfg.KeyID, cfg.Key),
+							key_name = "%s"
+						}`, cfg.Endpoint, cfg.KeyID, cfg.Key, cfg.KeyName),
 					ValidHCL:   true,
 					ValidBuild: false,
 				},
@@ -118,7 +125,18 @@ func TestKeyProvider(t *testing.T) {
 							endpoint = "%s"
 							key_id = "%s"
 							cert = "%s"
-						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert),
+							key_name = "%s"
+						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.KeyName),
+					ValidHCL:   true,
+					ValidBuild: false,
+				},
+				"missing-key-name": {
+					HCL: fmt.Sprintf(`key_provider "ovhcloud_kms" "foo" {
+							endpoint = "%s"
+							key_id = "%s"
+							cert = "%s"
+							key = "%s"
+						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
 					ValidHCL:   true,
 					ValidBuild: false,
 				},
@@ -128,8 +146,9 @@ func TestKeyProvider(t *testing.T) {
 							key_id = "%s"
 							cert = "%s"
 							key = "%s"
+							key_name = "%s"
 							key_bits = 2
-						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidHCL:   true,
 					ValidBuild: false,
 				},
@@ -139,8 +158,9 @@ func TestKeyProvider(t *testing.T) {
 							key_id = "%s"
 							cert = "%s"
 							key = "%s"
+							key_name = "%s"
 							key_bits = 256
-						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidHCL:   true,
 					ValidBuild: true,
 				},
@@ -150,8 +170,9 @@ func TestKeyProvider(t *testing.T) {
 							key_id = "%s"
 							cert = "%s"
 							key = "%s"
+							key_name = "%s"
 							unknown = 0
-						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+						}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidHCL:   false,
 					ValidBuild: false,
 				},
@@ -166,11 +187,12 @@ func TestKeyProvider(t *testing.T) {
 				"endpoint": "%s",
 				"key_id": "%s",
 				"cert": "%s",
-				"key": "%s"
+				"key": "%s",
+				"key_name": "%s"
 			}
 		}
 	}
-}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidJSON:  true,
 					ValidBuild: true,
 				},
@@ -192,41 +214,60 @@ func TestKeyProvider(t *testing.T) {
 			"foo": {
 				"endpoint": "%s",
 				"cert": "%s",
-				"key": "%s"
+				"key": "%s",
+				"key_name": "%s"
 			}
 		}
 	}
-}`, cfg.Endpoint, cfg.Cert, cfg.Key),
+}`, cfg.Endpoint, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidJSON:  true,
 					ValidBuild: false,
 				},
-				"missing cert": {
+				"missing-cert": {
 					JSON: fmt.Sprintf(`{
 	"key_provider": {
 		"ovhcloud_kms": {
 			"foo": {
 				"endpoint": "%s",
 				"key_id": "%s",
-				"key": "%s"
+				"key": "%s",
+				"key_name": "%s"
 			}
 		}
 	}
-}`, cfg.Endpoint, cfg.KeyID, cfg.Key),
+}`, cfg.Endpoint, cfg.KeyID, cfg.Key, cfg.KeyName),
 					ValidJSON:  true,
 					ValidBuild: false,
 				},
-				"missing key": {
+				"missing-key": {
 					JSON: fmt.Sprintf(`{
 	"key_provider": {
 		"ovhcloud_kms": {
 			"foo": {
 				"endpoint": "%s",
 				"key_id": "%s",
-				"cert": "%s"
+				"cert": "%s",
+				"key_name": "%s"
 			}
 		}
 	}
-}`, cfg.Endpoint, cfg.KeyID, cfg.Cert),
+}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.KeyName),
+					ValidJSON:  true,
+					ValidBuild: false,
+				},
+				"missing-key-name": {
+					JSON: fmt.Sprintf(`{
+	"key_provider": {
+		"ovhcloud_kms": {
+			"foo": {
+				"endpoint": "%s",
+				"key_id": "%s",
+				"cert": "%s",
+				"key": "%s"
+			}
+		}
+	}
+}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
 					ValidJSON:  true,
 					ValidBuild: false,
 				},
@@ -239,11 +280,12 @@ func TestKeyProvider(t *testing.T) {
 				"key_id": "%s",
 				"cert": "%s",
 				"key": "%s",
+				"key_name": "%s",
 				"key_bits": 2
 			}
 		}
 	}
-}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidJSON:  true,
 					ValidBuild: false,
 				},
@@ -256,11 +298,12 @@ func TestKeyProvider(t *testing.T) {
 				"key_id": "%s",
 				"cert": "%s",
 				"key": "%s",
+				"key_name": "%s",
 				"key_bits": 256
 			}
 		}
 	}
-}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidJSON:  true,
 					ValidBuild: true,
 				},
@@ -273,11 +316,12 @@ func TestKeyProvider(t *testing.T) {
 				"key_id": "%s",
 				"cert": "%s",
 				"key": "%s",
+				"key_name": "%s",
 				"unknown": 0
 			}
 		}
 	}
-}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key),
+}`, cfg.Endpoint, cfg.KeyID, cfg.Cert, cfg.Key, cfg.KeyName),
 					ValidJSON:  false,
 					ValidBuild: false,
 				},
