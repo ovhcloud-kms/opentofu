@@ -18,7 +18,6 @@ func TestConfig_EnvVarFallbacks(t *testing.T) {
 	t.Setenv("TF_OKMS_KEY_ID", testKeyID)
 	t.Setenv("TF_OKMS_CERT", testCert)
 	t.Setenv("TF_OKMS_KEY", testKey)
-	t.Setenv("TF_OKMS_KEY_NAME", testKeyName)
 
 	cfg := Config{}
 	_, _, err := cfg.Build()
@@ -35,7 +34,6 @@ func TestConfig_HCLField(t *testing.T) {
 		KeyID:    testKeyID,
 		Cert:     testCert,
 		Key:      testKey,
-		KeyName:  testKeyName,
 	}
 	_, _, err := cfg.Build()
 	require.NoError(t, err)

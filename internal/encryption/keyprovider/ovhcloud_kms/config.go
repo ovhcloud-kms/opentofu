@@ -113,12 +113,6 @@ func (c Config) validate() error {
 		}
 	}
 
-	if c.KeyName == "" {
-		return &keyprovider.ErrInvalidConfiguration{
-			Message: "key_name is required",
-		}
-	}
-
 	if c.KeyBits != 128 && c.KeyBits != 192 && c.KeyBits != 256 {
 		return &keyprovider.ErrInvalidConfiguration{
 			Message: fmt.Sprintf("key_bits must be 128, 192 or 256, got %d", c.KeyBits),
@@ -147,7 +141,7 @@ func (c Config) buildTLSConfig() (*tls.Config, uuid.UUID, error) {
 	if c.CA != "" {
 		if err := loadCertPool(tlsConfig, c.CA); err != nil {
 			return nil, uuid.Nil, &keyprovider.ErrInvalidConfiguration{
-				Message: "failed to load ca",
+				Message: "failed to load CA",
 				Cause:   err,
 			}
 		}
@@ -196,7 +190,7 @@ func int32EnvFallback(val int32, env string) int32 {
 func loadCertPool(tlsConfig *tls.Config, CA string) error {
 	pool, err := getCertPool(CA)
 	if err != nil {
-		return fmt.Errorf("failed to get ca: %w", err)
+		return fmt.Errorf("failed to get CA: %w", err)
 	}
 	tlsConfig.RootCAs = pool
 	return nil
