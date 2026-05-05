@@ -22,10 +22,15 @@ type okmsClient interface {
 }
 
 type keyProvider struct {
+	svc     okmsClient
+	ctx     context.Context
+	okmsID  uuid.UUID
+	keyID   uuid.UUID
+	keyBits int32
 }
 
 func (k keyProvider) Provide(decryptionMeta keyprovider.KeyMeta) (keysOutput keyprovider.Output, encryptionMeta keyprovider.KeyMeta, err error) {
 	//TODO implement me
 	//panic("implement me")
-	return keyprovider.Output{}, nil, nil
+	return keyprovider.Output{}, &keyMeta{}, nil
 }
