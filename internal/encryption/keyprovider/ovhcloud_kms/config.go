@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -60,8 +59,6 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 	c.CA = stringEnvFallback(c.CA, "TF_OKMS_CA")
 	c.Cert = stringEnvFallback(c.Cert, "TF_OKMS_CERT")
 	c.Key = stringEnvFallback(c.Key, "TF_OKMS_KEY")
-	c.KeyName = stringEnvFallback(c.KeyName, "TF_OKMS_KEY_NAME")
-	c.KeyBits = int32EnvFallback(c.KeyBits, "TF_OKMS_KEY_BITS")
 	if c.KeyBits == 0 {
 		c.KeyBits = defaultKeyBits
 	}
@@ -172,19 +169,6 @@ func stringEnvFallback(val string, env string) string {
 		return val
 	}
 	return os.Getenv(env)
-}
-
-func int32EnvFallback(val int32, env string) int32 {
-	if val != 0 {
-		return val
-	}
-
-	if s := os.Getenv(env); s != "" {
-		if n, err := strconv.ParseInt(s, 10, 32); err == nil {
-			return int32(n)
-		}
-	}
-	return val
 }
 
 func loadCertPool(tlsConfig *tls.Config, CA string) error {
