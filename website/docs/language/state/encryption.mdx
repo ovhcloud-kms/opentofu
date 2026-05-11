@@ -21,6 +21,7 @@ import AZVAULTEX1 from '!!raw-loader!./examples/encryption/azure_vault_ex1.tf'
 import AZVAULTEX2 from '!!raw-loader!./examples/encryption/azure_vault_ex2.tf'
 import AZVAULTEX3 from '!!raw-loader!./examples/encryption/azure_vault_ex3.tf'
 import OpenBao from '!!raw-loader!./examples/encryption/openbao.tf'
+import OVHcloudKMS from '!!raw-loader!./examples/encryption/ovhcloud_kms.tf'
 import External from '!!raw-loader!./examples/encryption/keyprovider-external.tofu'
 import ExternalHeader from '!!raw-loader!./examples/encryption/keyprovider-external-header.json'
 import ExternalInput from '!!raw-loader!./examples/encryption/keyprovider-external-input.json'
@@ -286,6 +287,27 @@ The following example illustrates a possible configuration:
 The OpenBao key provider is compatible with the last MPL-licensed version of HashiCorp Vault (1.14) but does not support the subsequent BUSL-licensed versions.
 
 :::
+
+### OVHcloud KMS
+
+This key provider uses the [OVHcloud Key Management Service](https://www.ovhcloud.com/en/identity-security-operations/key-management-service/) to generate data keys.
+Authentication relies on mutual TLS (mTLS): you must provide a client certificate and a private key.
+You can configure it as follows:
+
+| Option                   | Description                                                                                                                               | Min. | Default                            |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|------|------------------------------------|
+| endpoint *(required)*    | Endpoint URL. Can also be set via `TF_OKMS_ENDPOINT`.                                                                                     | N/A  | -                                  |
+| key_id *(required)*      | UUID of the service key used to wrap/unwrap the data key. Can also be set via `TF_OKMS_KEY_ID`.                                           | N/A  | -                                  |
+| cert *(required)*        | Path to the mTLS client certificate file. Can also be set via `TF_OKMS_CERT`.                                                             | N/A  | -                                  |
+| key *(required)*         | Path to the mTLS client private key file. Can also be set via `TF_OKMS_KEY`.                                                              | N/A  | -                                  |
+| ca                       | Optional path to a custom CA certificate to trust. Can also be set via `TF_OKMS_CA`.                                                      | N/A  | System CA pool                     |
+| key_bits                 | Optional size of the generated data key in bits. Must be `128`, `192` or `256`.                                                           | 128  | 256                                |
+| key_name                 | Optional name attached to the generated data key.                                                                                         | N/A  | -                                  |
+| encrypted_metadata_alias | Optional identifier to store metadata in the encrypted state/plan files under. Specify this to allow changing the name of a key provider. | -    | derived from the key provider name |
+
+The following example illustrates a minimal configuration:
+
+<CodeBlock language="hcl">{OVHcloudKMS}</CodeBlock>
 
 ### External (experimental)
 :::info
