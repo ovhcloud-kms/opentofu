@@ -200,7 +200,7 @@ func TestKeyProvider(t *testing.T) {
 					ValidJSON:  true,
 					ValidBuild: false,
 				},
-				"missing cert": {
+				"missing-cert": {
 					JSON: fmt.Sprintf(`{
 	"key_provider": {
 		"ovhcloud_kms": {
@@ -215,7 +215,7 @@ func TestKeyProvider(t *testing.T) {
 					ValidJSON:  true,
 					ValidBuild: false,
 				},
-				"missing key": {
+				"missing-key": {
 					JSON: fmt.Sprintf(`{
 	"key_provider": {
 		"ovhcloud_kms": {

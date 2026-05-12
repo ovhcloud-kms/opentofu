@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -50,6 +49,7 @@ type Config struct {
 	CA       string `hcl:"ca,optional"`
 	Cert     string `hcl:"cert,optional"`
 	Key      string `hcl:"key,optional"`
+	KeyName  string `hcl:"key_name,optional"`
 	KeyBits  int32  `hcl:"key_bits,optional"`
 }
 
@@ -59,7 +59,6 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 	c.CA = stringEnvFallback(c.CA, "TF_OKMS_CA")
 	c.Cert = stringEnvFallback(c.Cert, "TF_OKMS_CERT")
 	c.Key = stringEnvFallback(c.Key, "TF_OKMS_KEY")
-	c.KeyBits = int32EnvFallback(c.KeyBits, "TF_OKMS_KEY_BITS")
 	if c.KeyBits == 0 {
 		c.KeyBits = defaultKeyBits
 	}
@@ -99,6 +98,7 @@ func (c Config) Build() (keyprovider.KeyProvider, keyprovider.KeyMeta, error) {
 		ctx:     context.Background(),
 		okmsID:  okmsID,
 		keyID:   keyID,
+		keyName: c.KeyName,
 		keyBits: c.KeyBits,
 	}, new(keyMeta), nil
 }
@@ -138,7 +138,7 @@ func (c Config) buildTLSConfig() (*tls.Config, uuid.UUID, error) {
 	if c.CA != "" {
 		if err := loadCertPool(tlsConfig, c.CA); err != nil {
 			return nil, uuid.Nil, &keyprovider.ErrInvalidConfiguration{
-				Message: "failed to load ca",
+				Message: "failed to load CA",
 				Cause:   err,
 			}
 		}
@@ -171,23 +171,10 @@ func stringEnvFallback(val string, env string) string {
 	return os.Getenv(env)
 }
 
-func int32EnvFallback(val int32, env string) int32 {
-	if val != 0 {
-		return val
-	}
-
-	if s := os.Getenv(env); s != "" {
-		if n, err := strconv.ParseInt(s, 10, 32); err == nil {
-			return int32(n)
-		}
-	}
-	return val
-}
-
 func loadCertPool(tlsConfig *tls.Config, CA string) error {
 	pool, err := getCertPool(CA)
 	if err != nil {
-		return fmt.Errorf("failed to get ca: %w", err)
+		return fmt.Errorf("failed to get CA: %w", err)
 	}
 	tlsConfig.RootCAs = pool
 	return nil
